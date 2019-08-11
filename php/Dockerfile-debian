@@ -6,10 +6,25 @@ FROM php:${PHP_BASE_IMAGE_VERSION}
 
 # Install system packages for PHP extensions recommended for Yii 2.0 Framework
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Ali apt-get source.list
+#deb http://deb.debian.org/debian stretch main
+#deb http://security.debian.org/debian-security stretch/updates main
+#deb http://deb.debian.org/debian stretch-updates main
+
+
+RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
+    echo "deb http://mirrors.aliyun.com/debian/ stretch main non-free contrib" > /etc/apt/sources.list
+    echo "deb-src http://mirrors.aliyun.com/debian/ stretch main non-free contrib" >> /etc/apt/sources.list
+    echo "deb http://mirrors.aliyun.com/debian-security stretch/updates main" >> /etc/apt/sources.list
+    echo "deb-src http://mirrors.aliyun.com/debian-security stretch/updates main" >> /etc/apt/sources.list
+    echo "deb http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib" >> /etc/apt/sources.list
+    echo "deb-src http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib" >> /etc/apt/sources.list
+    echo "deb http://mirrors.aliyun.com/debian/ stretch-backports main non-free contrib" >> /etc/apt/sources.list
+    echo "deb-src http://mirrors.aliyun.com/debian/ stretch-backports main non-free contrib" >> /etc/apt/sources.list
+
 RUN apt-get update && \
-    apt-get -y install \
-        gnupg2 && \
-    apt-key update && \
+    apt-get -y install gnupg2 && \
     apt-get update && \
     apt-get -y install \
             g++ \
