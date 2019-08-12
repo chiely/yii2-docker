@@ -7,20 +7,19 @@ FROM php:${PHP_BASE_IMAGE_VERSION}
 # Install system packages for PHP extensions recommended for Yii 2.0 Framework
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Ali apt-get source.list
+# Old apt-get sources.list
 #deb http://deb.debian.org/debian stretch main
 #deb http://security.debian.org/debian-security stretch/updates main
 #deb http://deb.debian.org/debian stretch-updates main
-
-
+# Ali apt-get sources.list
 RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
-    echo "deb http://mirrors.aliyun.com/debian/ stretch main non-free contrib" > /etc/apt/sources.list
-    echo "deb-src http://mirrors.aliyun.com/debian/ stretch main non-free contrib" >> /etc/apt/sources.list
-    echo "deb http://mirrors.aliyun.com/debian-security stretch/updates main" >> /etc/apt/sources.list
-    echo "deb-src http://mirrors.aliyun.com/debian-security stretch/updates main" >> /etc/apt/sources.list
-    echo "deb http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib" >> /etc/apt/sources.list
-    echo "deb-src http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib" >> /etc/apt/sources.list
-    echo "deb http://mirrors.aliyun.com/debian/ stretch-backports main non-free contrib" >> /etc/apt/sources.list
+    echo "deb http://mirrors.aliyun.com/debian/ stretch main non-free contrib" > /etc/apt/sources.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian/ stretch main non-free contrib" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian-security stretch/updates main" >> /etc/apt/sources.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian-security stretch/updates main" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib" >> /etc/apt/sources.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian/ stretch-backports main non-free contrib" >> /etc/apt/sources.list && \
     echo "deb-src http://mirrors.aliyun.com/debian/ stretch-backports main non-free contrib" >> /etc/apt/sources.list
 
 RUN apt-get update && \
@@ -72,6 +71,19 @@ RUN docker-php-ext-configure gd \
         pdo_mysql \
         pdo_pgsql
 
+# 163 apt-get sources.list
+#RUN echo "deb http://mirrors.163.com/debian/ jessie main non-free contrib" >>/etc/apt/sources.list && \
+#    echo "deb http://mirrors.163.com/debian/ jessie-proposed-updates main non-free contrib" >>/etc/apt/sources.list && \
+#    echo "deb-src http://mirrors.163.com/debian/ jessie main non-free contrib" >>/etc/apt/sources.list && \
+#    echo "deb-src http://mirrors.163.com/debian/ jessie-proposed-updates main non-free contrib" >>/etc/apt/sources.list
+RUN apt-get update && \
+    apt-get -y install \
+    libz-dev \
+    libmemcached-dev \
+    libmemcached11 \
+    libmemcachedutil2 \
+    build-essential
+
 # Install PECL extensions
 # see http://stackoverflow.com/a/8154466/291573) for usage of `printf`
 RUN printf "\n" | pecl install \
@@ -81,16 +93,30 @@ RUN printf "\n" | pecl install \
         imagick \
         mongodb
 
+RUN curl -L -o /tmp/memcached.tar.gz "https://github.com/php-memcached-dev/php-memcached/archive/2.2.0.tar.gz"; \
+    mkdir -p memcached && \
+    tar -C memcached -zxvf /tmp/memcached.tar.gz --strip 1 && \
+    ( \
+        cd memcached && \
+        phpize && \
+        ./configure && \
+        make -j$(nproc) && \
+        make install \
+    ) && \
+    rm -r memcached && \
+    rm /tmp/memcached.tar.gz && \
+    docker-php-ext-enable memcached
+
 # Check if Xdebug extension need to be compiled
-RUN cd /tmp && \
-    git clone git://github.com/xdebug/xdebug.git && \
-    cd xdebug && \
-    git checkout 2.7.2 && \
-    phpize && \
-    ./configure --enable-xdebug && \
-    make && \
-    make install && \
-    rm -rf /tmp/xdebug
+#RUN cd /tmp && \
+#    git clone git://github.com/xdebug/xdebug.git && \
+#    cd xdebug && \
+#    git checkout 2.7.2 && \
+#    phpize && \
+#    ./configure --enable-xdebug && \
+#    make && \
+#    make install && \
+#    rm -rf /tmp/xdebug
 
 # Environment settings
 ENV PHP_USER_ID=33 \
@@ -106,12 +132,14 @@ COPY image-files/ /
 # Add GITHUB_API_TOKEN support for composer
 RUN chmod 700 \
         /usr/local/bin/docker-php-entrypoint \
-        /usr/local/bin/composer
+        /usr/local/bin/composer \
+        /etc/bash_completion.d/yii
 
 # Install composer
 RUN curl -sS https://getcomposer.org/installer | php -- \
         --filename=composer.phar \
         --install-dir=/usr/local/bin && \
+    composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/ && \
     composer clear-cache
 
 # Install composer plugins
@@ -126,8 +154,8 @@ RUN if command -v a2enmod >/dev/null 2>&1; then \
     ;fi
 
 # Install Yii framework bash autocompletion
-RUN curl -L https://raw.githubusercontent.com/yiisoft/yii2/master/contrib/completion/bash/yii \
-        -o /etc/bash_completion.d/yii
+#RUN curl -L https://raw.githubusercontent.com/yiisoft/yii2/master/contrib/completion/bash/yii \
+#        -o /etc/bash_completion.d/yii
 
 # Application environment
 WORKDIR /app
